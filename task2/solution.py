@@ -1,10 +1,44 @@
-def groupby(f, seq):
-    return {f(x): [i for i in seq if f(i) == f(x)] for x in seq}
+from collections import OrderedDict
 
-def zip_with(f, *iterables):
-    if iterables == ():
-        return []
-    min_len = min([len(it) for it in iterables])
-    print(min_len)
-    for i in range(min_len):
-        yield f(*[it[i] for it in iterables])
+
+def groupby(func, seq):
+    result = {}
+    for x in seq:
+        result.setdefault(func(x), []).append(x)
+    return result
+
+
+def compose(func1, func2):
+    return lambda x: func1(func2(x))
+
+
+def iterate(func):
+    composed_func = lambda x: x
+    while True:
+        yield composed_func
+        composed_func = compose(func, composed_func)
+
+
+def zip_with(func, *iterables):
+    return (func(*zipped) for zipped in zip(*iterables))
+
+
+def cache(func, cache_size):
+    if cache_size == 0:
+        return func
+    cache = OrderedDict()
+
+    def func_cached(*args):
+        if args not in cache:
+            if cache_size == len(cache):
+                cache.popitem(False)
+            cache[args] = func(*args)
+
+        return cache[args]
+
+    return func_cached
+
+
+def double(x):
+        print('called "double"')
+        return x * 2

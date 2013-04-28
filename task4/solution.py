@@ -1,101 +1,81 @@
-import re
-
-
 class TicTacToeBoard:
-    ALPHA_KEYS = {"A": 0, "B": 1, "C": 2}
-    NUM_KEYS = {"3": 2, "2": 1, "1": 0}
-    PLAYER_X = 'X'
-    PLAYER_O = 'O'
+    PLAYERS = ("X", "O")
+    KEYS = ("A3", "B3", "C3",
+            "A2", "B2", "C2",
+            "A1", "B1", "C1")
+    WIN_COMBINATIONS = (("A1", "A2", "A3"),
+                        ("B1", "B2", "B3"),
+                        ("C1", "C2", "C3"),
+                        ("A1", "B1", "C1"),
+                        ("A2", "B2", "C2"),
+                        ("A3", "B3", "C3"),
+                        ("A3", "B2", "C1"),
+                        ("A1", "B2", "C3"))
+    GAME_IN_PROGRESS = "Game in progress."
+    X_WINS = "X wins!"
+    O_WINS = "O wins!"
+    DRAW = "Draw!"
     BOARD_SIZE = 3
 
     def __init__(self):
-        self.board = [[" " for i in range(0, self.BOARD_SIZE)]
-                      for i in range(0, self.BOARD_SIZE)]
-        self.next_player = None
-        self.moves_counter = 0
-        self._game_status = "Game in progress."
-
-        self.win_combinations = []
-        self.win_combinations += [[(i, j) for i in range(0, self.BOARD_SIZE)]
-                                  for j in range(0, self.BOARD_SIZE)]
-        self.win_combinations += [[(i, j) for j in range(0, self.BOARD_SIZE)]
-                                  for i in range(0, self.BOARD_SIZE)]
-        self.win_combinations += [[(i, i) for i in range(0, self.BOARD_SIZE)]]
-        self.win_combinations += [[(i, self.BOARD_SIZE-i-1)
-                                   for i in range(0, self.BOARD_SIZE)]]
+        self.__board = {}
+        self.__last_player = None
+        self.__moves_counter = 0
+        self.__game_status = self.GAME_IN_PROGRESS
 
     def __str__(self):
-        devider = "\n  -------------\n"
-        result = "{}".format(devider)
-        for i in reversed(range(0, 3)):
-            result += "{} ".format(str(i+1))
-            for j in range(0, 3):
-                result += "| {} ".format(self.board[i][j])
-
-            result += "|{}".format(devider)
-
-        result += "    A   B   C  \n"
-        return result
+        return ("\n" +
+                "  -------------\n" +
+                "3 | {} | {} | {} |\n" +
+                "  -------------\n" +
+                "2 | {} | {} | {} |\n" +
+                "  -------------\n" +
+                "1 | {} | {} | {} |\n" +
+                "  -------------\n" +
+                "    A   B   C  \n").format(
+                    *[self.__board.get(key, " ")
+                      for key in self.KEYS])
 
     def __setitem__(self, key, value):
-        if not self._check_valid_key(key):
+        if key not in self.KEYS:
             raise InvalidKey("Invalid key!")
 
-        if not self._check_valid_value(value):
+        if value not in self.PLAYERS:
             raise InvalidValue("Invalid value!")
 
-        indexes = self._calculate_indexes(key)
-        if self.board[indexes[0]][indexes[1]] != " ":
+        elif key in self.__board:
             raise InvalidMove("Invalid move!")
 
-        if not self._check_your_turn(value):
+        if self.__last_player == value:
             raise NotYourTurn
 
-        self.board[indexes[0]][indexes[1]] = value
-        self._update_game_status(indexes[0], indexes[1], value)
+        self.__board[key] = value
+        self.__last_player = value
+        self.__update_game_status(key, value)
 
     def __getitem__(self, key):
-        if not self._check_valid_key(key):
+        if key not in self.KEYS:
             raise InvalidKey("Invalid key!")
 
-        indexes = self._calculate_indexes(key)
-        return self.board[indexes[0]][indexes[1]]
-
-    def _calculate_indexes(self, key):
-        row = self.ALPHA_KEYS[key[0]]
-        col = self.NUM_KEYS[key[1]]
-        return (row, col)
+        return self.__board[key]
 
     def game_status(self):
-        return self._game_status
+        return self.__game_status
 
-    def _update_game_status(self, row, col, player):
-        self.moves_counter += 1
-        for combination in self.win_combinations:
-            filtered_combination = [pos for pos in combination 
-                                    if self.board[pos[0]][pos[1]] == player]
-            if len(filtered_combination) == self.BOARD_SIZE:
-                self._game_status = "{} wins!".format(player)
-                return
+    def __update_game_status(self, key, player):
+        if self.__game_status != self.GAME_IN_PROGRESS:
+            return
+        self.__moves_counter += 1
+        player_win = len([comb for comb in self.WIN_COMBINATIONS
+                          if self.__check_line(comb, player)])
+        if player_win:
+            self.__game_status = "{} wins!".format(player)
+        elif self.__moves_counter == 9:
+            self.__game_status = self.DRAW
 
-        if self.moves_counter == 9:
-            self._game_status = "Draw!"
-
-    def _check_valid_key(self, key):
-        return re.match(r'(^([ABC][123])$)', key)
-
-    def _check_valid_value(self, value):
-        return re.match(r'(^[XO]$)', value)
-
-    def _check_your_turn(self, player):
-        if self.next_player is None or self.next_player == player:
-            if player == self.PLAYER_X:
-                self.next_player = self.PLAYER_O
-            else:
-                self.next_player = self.PLAYER_X
-            return True
-
-        return False
+    def __check_line(self, line, player):
+        return all([self.__board.get(key, " ") == player
+                    for key in line])
 
 
 class InvalidKey(Exception):
